@@ -25,6 +25,9 @@
 
 @property (nonatomic) NSInteger numberOfTurnsTaken;
 
+@property CGAffineTransform transform;
+
+
 
 @end
 
@@ -48,6 +51,8 @@
 
     [self resetBoard];
 
+    self.transform = self.whichPlayerLabel.transform;
+
 
 }
 
@@ -65,6 +70,77 @@
 
     return nil;
 }
+
+-(IBAction)onDrag:(UIPanGestureRecognizer* )panGestureRecognizer{
+
+    //    NSLog(@"you are dragging");
+
+    CGPoint point;
+
+    point = [panGestureRecognizer translationInView:self.view]; // *** get the point where your finger is from the gesture
+
+    self.whichPlayerLabel.transform = CGAffineTransformMakeTranslation(point.x, point.y); // *** apply the point to the transform of the label
+
+    point.x += self.whichPlayerLabel.center.x; // *** add an offset to the center of the label; now "point" is the center of the label
+    point.y += self.whichPlayerLabel.center.y;
+
+    if (panGestureRecognizer.state == UIGestureRecognizerStateEnded) { // *** let go
+
+        for (UILabel *eachLabel in self.ticTacToeGridArray) {
+
+            NSLog(@"checking this label: %d", eachLabel.tag);
+
+            if (CGRectContainsPoint(eachLabel.frame, point)){ // *** if the label's center is in the grid label, then set center
+
+                NSLog(@"you are in label %d", eachLabel.tag);
+
+                // copied from tapped method
+
+                if (eachLabel.text.length == 0) {
+                    [self populateLabelWithCorrectPlayer:eachLabel];
+
+                    [self setPlayerLabel];
+                    self.numberOfTurnsTaken ++;
+                    if ([self isTheBoardFilled])
+                    {
+                        self.whichPlayerLabel.text = @"GAME OVER";
+                    }
+
+                    NSString *winnerString = [self whoWon];
+                    NSLog(@"winnerString: %@",winnerString);
+
+                    if (winnerString != nil) {
+                        NSString *messageString = [NSString stringWithFormat:@"%@ Won",winnerString];
+                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:messageString
+                                                                        message:@"Great Job!"
+                                                                       delegate:self
+                                                              cancelButtonTitle:@"Restart Game"
+                                                              otherButtonTitles:nil];
+                        [alert show];
+                    }
+
+                    self.whichPlayerLabel.transform = self.transform;
+                    break;
+                } else { // square is filled
+
+                    [UIView animateWithDuration:0.5 animations:^{
+                        self.whichPlayerLabel.transform = self.transform;
+                    }];
+                }
+
+            } else { // if not in the frame
+
+                NSLog(@"animate");
+
+                [UIView animateWithDuration:0.5 animations:^{
+                    self.whichPlayerLabel.transform = self.transform;
+                }];
+            }
+        } // end for each label loop
+    }
+    
+}
+
 
 -(IBAction)onLabelTapped:(UITapGestureRecognizer*) tapGestureRecognizer {
 
@@ -202,7 +278,7 @@
     }
     else if ([first isEqualToString:@"O"] && [second isEqualToString:@"O"] && [third isEqualToString:@"O"]) {
         NSLog(@"O IS THE WINNER");
-        return @"Y";
+        return @"O";
     }
     return nil;
 }
