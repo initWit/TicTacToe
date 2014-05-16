@@ -101,6 +101,7 @@
 
                     [self setPlayerLabel];
                     self.numberOfTurnsTaken ++;
+
                     if ([self isTheBoardFilled])
                     {
                         self.whichPlayerLabel.text = @"GAME OVER";
@@ -121,22 +122,27 @@
 
                     self.whichPlayerLabel.transform = self.transform;
                     break;
-                } else { // square is filled
+
+                } else { // frame is filled
+
+                    [UIView animateWithDuration:0.5 animations:^{
+                        self.whichPlayerLabel.transform = self.transform;
+                    }];
+                    break;
+                }
+
+            } else { // if not in the frame
+
+                if (eachLabel.tag==9) {
+                    NSLog(@"animate");
 
                     [UIView animateWithDuration:0.5 animations:^{
                         self.whichPlayerLabel.transform = self.transform;
                     }];
                 }
-
-            } else { // if not in the frame
-
-                NSLog(@"animate");
-
-                [UIView animateWithDuration:0.5 animations:^{
-                    self.whichPlayerLabel.transform = self.transform;
-                }];
             }
         } // end for each label loop
+
     }
     
 }
