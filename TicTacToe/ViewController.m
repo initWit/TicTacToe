@@ -27,7 +27,9 @@
 
 @property CGAffineTransform transform;
 
-
+@property (strong, nonatomic) NSTimer *myTimer;
+@property int remainingSeconds;
+@property (strong, nonatomic) IBOutlet UILabel *timerLabel;
 
 @end
 
@@ -49,10 +51,13 @@
                                    self.myLabelNine,
                                    nil];
 
-    [self resetBoard];
-
     self.transform = self.whichPlayerLabel.transform;
 
+    [self resetBoard];
+
+    self.timerLabel.text = @"Drag X to Start";
+
+//    [self startTimer];
 
 }
 
@@ -88,13 +93,9 @@
 
         for (UILabel *eachLabel in self.ticTacToeGridArray) {
 
-            NSLog(@"checking this label: %d", eachLabel.tag);
+//            NSLog(@"checking this label: %d", eachLabel.tag);
 
             if (CGRectContainsPoint(eachLabel.frame, point)){ // *** if the label's center is in the grid label, then set center
-
-                NSLog(@"you are in label %d", eachLabel.tag);
-
-                // copied from tapped method
 
                 if (eachLabel.text.length == 0) {
                     [self populateLabelWithCorrectPlayer:eachLabel];
@@ -102,13 +103,7 @@
                     [self setPlayerLabel];
                     self.numberOfTurnsTaken ++;
 
-                    if ([self isTheBoardFilled])
-                    {
-                        self.whichPlayerLabel.text = @"GAME OVER";
-                    }
-
                     NSString *winnerString = [self whoWon];
-                    NSLog(@"winnerString: %@",winnerString);
 
                     if (winnerString != nil) {
                         NSString *messageString = [NSString stringWithFormat:@"%@ Won",winnerString];
@@ -117,10 +112,37 @@
                                                                        delegate:self
                                                               cancelButtonTitle:@"Restart Game"
                                                               otherButtonTitles:nil];
+                        alert.tag = 1;
                         [alert show];
+
+                        [self endTimer];
+                        break;
+
+                    }
+
+                    if ([self isTheBoardFilled])
+                    {
+                        self.whichPlayerLabel.transform = self.transform;
+                        self.whichPlayerLabel.text = @"GAME OVER";
+
+                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"TIE GAME"
+                                                                        message:@"What a good battle!"
+                                                                       delegate:self
+                                                              cancelButtonTitle:@"Play again?"
+                                                              otherButtonTitles:nil];
+                        alert.tag = 1;
+                        [alert show];
+
+                        [self endTimer];
+                        break;
+                        
                     }
 
                     self.whichPlayerLabel.transform = self.transform;
+
+                    [self endTimer];
+                    [self startTimer];
+
                     break;
 
                 } else { // frame is filled
@@ -142,55 +164,32 @@
                 }
             }
         } // end for each label loop
-
     }
-    
 }
 
 
--(IBAction)onLabelTapped:(UITapGestureRecognizer*) tapGestureRecognizer {
 
-    CGPoint tappedPoint = [tapGestureRecognizer locationInView:self.view];
-
-    UILabel *selectLabel = [self findLabelUsingPoint:tappedPoint];
-
-    if (selectLabel.text.length == 0) {
-        [self populateLabelWithCorrectPlayer:selectLabel];
-        [self setPlayerLabel];
-
-        self.numberOfTurnsTaken ++;
-
-        if ([self isTheBoardFilled]) {
-
-            self.whichPlayerLabel.text = @"GAME OVER";
-        }
-
-        NSString *winnerString = [self whoWon];
-
-        NSLog(@"winnerString: %@",winnerString);
-        if (winnerString != nil) {
-            NSString *messageString = [NSString stringWithFormat:@"%@ Won",winnerString];
-            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:messageString
-                                                            message:@"Great Job!"
-                                                           delegate:self
-                                                  cancelButtonTitle:@"Restart Game"
-                                                  otherButtonTitles:nil];
-            [alert show];
-        }
-
-    }
-
-
-}
 
 -(void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
-    [self resetBoard];
+
+    if (alertView.tag == 1) { // *** if it is the winner alert
+        [self resetBoard];
+    }
+    else { // *** if it is the time expired alert
+        self.isItPlayerOne = !self.isItPlayerOne; // *** switch players
+        [self setPlayerLabel];
+        // *** increase turns?
+        [self startTimer];
+    }
+
+
 }
 
 #pragma mark Helper Methods
 
 -(void)resetBoard {
 
+    NSLog(@"Resetting Board");
     self.isItPlayerOne = YES;
     [self setPlayerLabel];
     self.numberOfTurnsTaken = 0;
@@ -198,6 +197,11 @@
     for (UILabel *label in self.ticTacToeGridArray) {
         label.text = @"";
     }
+
+    self.whichPlayerLabel.transform = self.transform;
+
+    self.timerLabel.text = @"Drag X to start";
+
 }
 
 
@@ -225,25 +229,21 @@
         self.whichPlayerLabel.text = @"O";
         self.whichPlayerLabel.textColor = [UIColor redColor];
 
-    }}
+    }
+}
 
-// helper method to determine if board is filled
 
 -(BOOL) isTheBoardFilled {
 
     if (self.numberOfTurnsTaken > 8) {
-
         return YES;
     }
     return NO;
 }
 
 
-// helper method to determine winner
-
 - (NSString *) whoWon
 {
-//    if ([self.my])
 
     NSString *first = [NSString stringWithFormat:@"%@",self.myLabelOne.text];
     NSString *second = [NSString stringWithFormat:@"%@",self.myLabelTwo.text];
@@ -288,5 +288,40 @@
     }
     return nil;
 }
+
+#pragma mark - Timer helper methods
+
+- (void) startTimer {
+    self.myTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
+                                     target:self
+                                   selector:@selector(countDownClock)
+                                   userInfo:nil
+                                    repeats:YES];
+
+    self.remainingSeconds = 10;
+    self.timerLabel.text = @"10";
+}
+
+- (void) countDownClock {
+
+    if (--self.remainingSeconds == 0) {
+        [self endTimer];
+
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"OUT OF TIME"
+                                                        message:@"Move is forfeited"
+                                                       delegate:self
+                                              cancelButtonTitle:@"OK"
+                                              otherButtonTitles:nil];
+        alert.tag = 2;
+        [alert show];
+    }
+        self.timerLabel.text = [NSString stringWithFormat:@"%d",self.remainingSeconds];
+}
+
+-(void) endTimer {
+    [self.myTimer invalidate];
+    self.myTimer = nil;
+}
+
 
 @end
