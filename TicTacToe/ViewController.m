@@ -31,6 +31,9 @@
 @property int remainingSeconds;
 @property (strong, nonatomic) IBOutlet UILabel *timerLabel;
 
+@property BOOL clickedInfoButton;
+@property int pausedSecondsLeft;
+
 @end
 
 @implementation ViewController
@@ -57,7 +60,18 @@
 
     self.timerLabel.text = @"Drag X to Start";
 
-//    [self startTimer];
+    self.clickedInfoButton = NO;
+
+//    self.navigationController.navigationBarHidden = YES;
+
+}
+
+- (void) viewDidAppear:(BOOL)animated{
+    [super viewDidAppear:animated];
+
+    if (self.clickedInfoButton == YES) {
+        [self startTimer];
+    }
 
 }
 
@@ -300,6 +314,12 @@
 
     self.remainingSeconds = 10;
     self.timerLabel.text = @"10";
+
+    if (self.clickedInfoButton == YES) {
+        self.remainingSeconds = self.pausedSecondsLeft;
+        self.timerLabel.text = [NSString stringWithFormat:@"%d",self.pausedSecondsLeft];
+        self.clickedInfoButton = NO;
+    }
 }
 
 - (void) countDownClock {
@@ -318,10 +338,15 @@
         self.timerLabel.text = [NSString stringWithFormat:@"%d",self.remainingSeconds];
 }
 
--(void) endTimer {
+-(IBAction) endTimer {
     [self.myTimer invalidate];
     self.myTimer = nil;
 }
 
+- (IBAction) didClickInfoButton {
+
+    self.clickedInfoButton = YES;
+    self.pausedSecondsLeft = self.remainingSeconds;
+}
 
 @end
