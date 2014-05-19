@@ -34,6 +34,8 @@
 @property BOOL clickedInfoButton;
 @property int pausedSecondsLeft;
 
+@property (strong, nonatomic) IBOutlet UILabel *playModeLabel;
+
 @end
 
 @implementation ViewController
@@ -58,9 +60,11 @@
 
     [self resetBoard];
 
-    self.timerLabel.text = @"Drag X to Start";
+    self.timerLabel.text = @"Drag X to start";
 
     self.clickedInfoButton = NO;
+
+    self.playModeLabel.text = self.playMode;
 
 //    self.navigationController.navigationBarHidden = YES;
 
@@ -70,7 +74,11 @@
     [super viewDidAppear:animated];
 
     if (self.clickedInfoButton == YES) {
-        [self startTimer];
+
+        if (![self.timerLabel.text isEqualToString:@"Drag X to start"]) {
+
+            [self startTimer];
+        }
     }
 
 }
@@ -92,8 +100,6 @@
 
 -(IBAction)onDrag:(UIPanGestureRecognizer* )panGestureRecognizer{
 
-    //    NSLog(@"you are dragging");
-
     CGPoint point;
 
     point = [panGestureRecognizer translationInView:self.view]; // *** get the point where your finger is from the gesture
@@ -106,8 +112,6 @@
     if (panGestureRecognizer.state == UIGestureRecognizerStateEnded) { // *** let go
 
         for (UILabel *eachLabel in self.ticTacToeGridArray) {
-
-//            NSLog(@"checking this label: %d", eachLabel.tag);
 
             if (CGRectContainsPoint(eachLabel.frame, point)){ // *** if the label's center is in the grid label, then set center
 
@@ -177,9 +181,18 @@
                     }];
                 }
             }
+
         } // end for each label loop
-    }
+
+
+        if ([self whoWon] == nil && ![self.playMode isEqualToString: @"TwoPlayer"]) {
+            [self computerTakesTurn];
+        }
+
+    } // end if touch ended
+
 }
+
 
 
 
@@ -190,10 +203,17 @@
         [self resetBoard];
     }
     else { // *** if it is the time expired alert
-        self.isItPlayerOne = !self.isItPlayerOne; // *** switch players
-        [self setPlayerLabel];
-        // *** increase turns?
-        [self startTimer];
+
+        if ([self.playMode isEqualToString: @"TwoPlayer"]) {
+            self.isItPlayerOne = !self.isItPlayerOne; // *** switch players
+            [self setPlayerLabel];
+            [self startTimer];
+        }
+        else {
+            self.isItPlayerOne = !self.isItPlayerOne; // *** switch players
+            [self setPlayerLabel];
+            [self computerTakesTurn];
+        }
     }
 
 
@@ -312,14 +332,17 @@
                                    userInfo:nil
                                     repeats:YES];
 
-    self.remainingSeconds = 10;
-    self.timerLabel.text = @"10";
 
-    if (self.clickedInfoButton == YES) {
+    if (self.clickedInfoButton == YES && ![self.timerLabel.text isEqualToString:@"Drag X to start"]) {
+        NSLog(@"came back timerlabel says %@", self.timerLabel.text);
         self.remainingSeconds = self.pausedSecondsLeft;
         self.timerLabel.text = [NSString stringWithFormat:@"%d",self.pausedSecondsLeft];
-        self.clickedInfoButton = NO;
     }
+    else {
+        self.remainingSeconds = 10;
+        self.timerLabel.text = @"10";
+    }
+    self.clickedInfoButton = NO;
 }
 
 - (void) countDownClock {
@@ -346,7 +369,173 @@
 - (IBAction) didClickInfoButton {
 
     self.clickedInfoButton = YES;
-    self.pausedSecondsLeft = self.remainingSeconds;
+
+    if (![self.timerLabel.text  isEqual: @"Drag X to start"]) {
+        self.pausedSecondsLeft = self.remainingSeconds;
+    }
+}
+
+- (IBAction)goToStartPage:(id)sender {
+
+    [self endTimer];
+    [self resetBoard];
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+
+- (void) computerTakesTurn {
+    if ([self.playMode isEqualToString:@"OnePlayerEasy"]) {
+        [self easyComputerMakesSelection];
+    }
+    else{
+        [self difficultComputerMakesSelection];
+    }
+
+}
+
+- (void) easyComputerMakesSelection {
+
+    for (UILabel *eachLabel in self.ticTacToeGridArray) {
+
+        if (eachLabel.text.length == 0) {
+            [self populateLabelWithCorrectPlayer:eachLabel];
+            [self setPlayerLabel];
+            self.numberOfTurnsTaken ++;
+
+            NSString *winnerString = [self whoWon];
+
+            if (winnerString != nil) {
+                NSString *messageString = [NSString stringWithFormat:@"%@ Won",winnerString];
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:messageString
+                                                                message:@"Great Job!"
+                                                               delegate:self
+                                                      cancelButtonTitle:@"Restart Game"
+                                                      otherButtonTitles:nil];
+                alert.tag = 1;
+                [alert show];
+
+                [self endTimer];
+                break;
+
+            }
+
+            if ([self isTheBoardFilled])
+            {
+                self.whichPlayerLabel.transform = self.transform;
+                self.whichPlayerLabel.text = @"GAME OVER";
+
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"TIE GAME"
+                                                                message:@"What a good battle!"
+                                                               delegate:self
+                                                      cancelButtonTitle:@"Play again?"
+                                                      otherButtonTitles:nil];
+                alert.tag = 1;
+                [alert show];
+
+                [self endTimer];
+                break;
+
+            }
+
+            self.whichPlayerLabel.transform = self.transform;
+            
+            [self endTimer];
+            [self startTimer];
+            
+            break;
+        }
+        
+    } // end for loop
+
+}
+
+- (void) difficultComputerMakesSelection{
+
+    NSMutableArray *gameState = [[NSMutableArray alloc]init];
+
+    for (UILabel *eachLabel in self.ticTacToeGridArray) {
+
+        [gameState addObject:eachLabel.text];
+
+    }
+    NSLog(@"%@",gameState);
+
+    // user takes center
+
+    if ([[gameState objectAtIndex:4] isEqualToString:@"X"]) {
+        NSLog(@"USER PICKED CENTER");
+    }
+    if ([[gameState objectAtIndex:8] isEqualToString:@"X"]) {
+        NSLog(@"USER PICKED OPPOSITE CORNER - ATTACK!");
+    }
+
+    if ([[gameState objectAtIndex:2] isEqualToString:@"X"] || [[gameState objectAtIndex:6] isEqualToString:@"X"]) {
+        NSLog(@"USER PICKED CORNER = NOW BLOCK");
+    }
+
+    if ([[gameState objectAtIndex:1] isEqualToString:@"X"] || [[gameState objectAtIndex:3] isEqualToString:@"X"] || [[gameState objectAtIndex:5] isEqualToString:@"X"] || [[gameState objectAtIndex:7] isEqualToString:@"X"]) {
+        NSLog(@"USER PICKED SIDE = NOW BLOCK");
+    }
+
+
+
+
+    for (UILabel *eachLabel in self.ticTacToeGridArray) {
+
+
+        if (eachLabel.text.length == 0) {
+            [self populateLabelWithCorrectPlayer:eachLabel];
+            [self setPlayerLabel];
+            self.numberOfTurnsTaken ++;
+
+            NSString *winnerString = [self whoWon];
+
+            if (winnerString != nil) {
+                NSString *messageString = [NSString stringWithFormat:@"%@ Won",winnerString];
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:messageString
+                                                                message:@"Great Job!"
+                                                               delegate:self
+                                                      cancelButtonTitle:@"Restart Game"
+                                                      otherButtonTitles:nil];
+                alert.tag = 1;
+                [alert show];
+
+                [self endTimer];
+                break;
+
+            }
+
+            if ([self isTheBoardFilled])
+            {
+                self.whichPlayerLabel.transform = self.transform;
+                self.whichPlayerLabel.text = @"GAME OVER";
+
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"TIE GAME"
+                                                                message:@"What a good battle!"
+                                                               delegate:self
+                                                      cancelButtonTitle:@"Play again?"
+                                                      otherButtonTitles:nil];
+                alert.tag = 1;
+                [alert show];
+
+                [self endTimer];
+                break;
+
+            }
+
+            self.whichPlayerLabel.transform = self.transform;
+
+            [self endTimer];
+            [self startTimer];
+            
+            break;
+        }
+        
+    } // end for loop
+
+
+
+
 }
 
 @end
